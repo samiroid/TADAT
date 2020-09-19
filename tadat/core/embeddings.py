@@ -3,6 +3,11 @@ from tadat.core.vectorizer import idx2word
 import numpy as np
 from sklearn.decomposition import PCA
 import os
+import sys
+import torch
+from transformers import BertTokenizer, BertModel
+# from tsne import bh_sne    
+
 
 def old_embeddings_to_dict(path, max_words=None):
     """
@@ -122,8 +127,7 @@ def save_txt(path, E, wrd2idx):
 
 
 def project_vectors(X_in, model='tsne', perp=10, n_components=2):    
-    if model == 'tsne':
-        from tsne import bh_sne    
+    if model == 'tsne':        
         X_in = X_in.reshape((X_in.shape[0], -1)).astype('float64')
         if perp is not None:
             X_out = bh_sne(X_in, perplexity=perp)    
@@ -159,4 +163,3 @@ def similarity_rank(X, wrd2idx,top_k=None):
         sim_scores[:,i]   = ranked_simz[:top_k]
 
     return items, idxs, item_ranking, sim_scores
-

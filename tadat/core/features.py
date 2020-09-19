@@ -17,7 +17,7 @@ def NLSE(X, Y):
 
 	return X, Y, st, ed
 
-def BOW(docs, vocab_size, sparse=False):
+def BOW(docs, vocab_size, sparse=True):
 	"""
 		Extract bag-of-word features
 	"""		
@@ -28,12 +28,12 @@ def BOW(docs, vocab_size, sparse=False):
 		except IndexError:
 			pass
 	if sparse: 
-		print("(sparse BOW)")
+		# print("(sparse BOW)")
 		return X.tocsr()	
-	print("(dense BOW)")
+	# print("(dense BOW)")
 	return X.todense()
 
-def BOW_freq(docs, vocab_size, sparse=False):
+def BOW_freq(docs, vocab_size, sparse=True):
 	"""
 		Extract bag-of-word features
 	"""		
@@ -47,12 +47,12 @@ def BOW_freq(docs, vocab_size, sparse=False):
 		except IndexError:
 			pass
 	if sparse: 
-		print("(sparse BOW)")
+		# print("(sparse BOW)")
 		return X.tocsr()	
-	print("(dense BOW)")
+	# print("(dense BOW)")
 	return X.todense()
 
-def BOW_tfidf(docs, vocab_size, idfs, sparse=False):
+def BOW_tfidf(docs, vocab_size, idfs, sparse=True):
 	"""
 		Extract bag-of-word features
 	"""		
@@ -68,9 +68,9 @@ def BOW_tfidf(docs, vocab_size, idfs, sparse=False):
 		except IndexError:
 			pass
 	if sparse: 
-		print("(sparse BOW)")
+		# print("(sparse BOW)")
 		return X.tocsr()	
-	print("(dense BOW)")
+	# print("(dense BOW)")
 	return X.todense()
 
 def BOE(docs, E, agg='sum'):
