@@ -12,7 +12,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
 from transformers import BertTokenizer, BertModel, AdamW, get_linear_schedule_with_warmup
-                                                
+import itertools
+
 def evaluate_roc(probs, y_true):
     """
     - Print AUC and accuracy on the test set
@@ -41,38 +42,20 @@ def evaluate_roc(probs, y_true):
     plt.xlabel('False Positive Rate')
     plt.show()
 
-def text_preprocessing(text):
-    """
-    - Remove entity mentions (eg. '@united')
-    - Correct errors (eg. '&amp;' to '&')
-    @param    text (str): a string to be processed.
-    @return   text (Str): the processed string.
-    """
-    # Remove '@name'
-    text = re.sub(r'(@.*?)[\s]', ' ', text)
-
-    # Replace '&amp;' with '&'
-    text = re.sub(r'&amp;', '&', text)
-
-    # Remove trailing whitespace
-    text = re.sub(r'\s+', ' ', text).strip()
-
-    return text
 
 def max_doc_len(docs, tokenizer=None):
     if not tokenizer:
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
     return max([len(tokenizer.encode(d, add_special_tokens=True, max_length=512, truncation=True)) for d in docs])
 
-def vectorize(data, labels, max_len, tokenizer=None):    
+def vectorize(data, max_len=512, tokenizer=None):    
     if not tokenizer: 
         tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
     input_ids = []
     attention_masks = []
-
     for sent in data:        
         encoded_sent = tokenizer.encode_plus(
-            text=text_preprocessing(sent),  # Preprocess sentence
+            text=sent,  # Preprocess sentence
             add_special_tokens=True,        # Add `[CLS]` and `[SEP]`
             max_length=max_len,                  # Max length to truncate/pad
             pad_to_max_length=True,         # Pad sentence to max length            
@@ -85,104 +68,33 @@ def vectorize(data, labels, max_len, tokenizer=None):
 
     # Convert lists to tensors
     input_ids = torch.tensor(input_ids)
-    attention_masks = torch.tensor(attention_masks)
-    labels = torch.tensor(labels)
-    return input_ids, attention_masks, labels
+    attention_masks = torch.tensor(attention_masks)    
+    return input_ids, attention_masks
 
-# Create the BertClassfier class
-class BertClassifier(nn.Module):
-    """Bert Model for Classification Tasks.
-    """
-    def __init__(self, freeze_bert=False, pool=True):
-        """
-        @param    bert: a BertModel object
-        @param    classifier: a torch.nn.Module classifier
-        @param    freeze_bert (bool): Set `False` to fine-tune the BERT model
-        """
-        super(BertClassifier, self).__init__()
-        # Specify hidden size of BERT, hidden size of our classifier, and number of labels
-        D_in, H, D_out = 768, 50, 2
-        if pool:            
-            print("BERT > POOl features")
+def encode(inputs, masks, batch_size, encoder=None, pooling=True):
+    if not encoder:
+        encoder = BertModel.from_pretrained('bert-base-uncased', output_hidden_states=False)
+    #load data
+    data = TensorDataset(inputs, masks)
+    sampler = SequentialSampler(data)
+    dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)    
+    features = []
+    device = __get_device()
+    for batch in dataloader:        
+        # Load batch to GPU
+        input_ids, attn_mask = tuple(t.to(device) for t in batch)
+        pool_features, cls_features = encoder(input_ids=input_ids,
+                                            attention_mask=attn_mask)        
+        
+        if pooling:
+            X = pool_features.sum(axis=1)
         else:
-            print("BERT > CLS features")
-        self.pool = pool
-        # Instantiate BERT model
-        self.bert = BertModel.from_pretrained('bert-base-uncased', output_hidden_states=False)
+            X = cls_features
+        X = X.cpu().numpy()
+        features.append(X)
+    features = np.vstack(features)
+    return features
 
-        # Instantiate an one-layer feed-forward classifier
-        # self.classifier = nn.Sequential(
-        #     nn.Linear(D_in, H),
-        #     nn.ReLU(),
-        #     #nn.Dropout(0.5),
-        #     nn.Linear(H, D_out)
-        # )
-
-        self.classifier = nn.Sequential(           
-            nn.ReLU(),            
-            nn.Linear(D_in, D_out)
-        )
-
-        # Freeze the BERT model
-        if freeze_bert:
-            for param in self.bert.parameters():
-                param.requires_grad = False
-        
-    # def forward(self, input_ids, attention_mask):
-    #     """
-    #     Feed input to BERT and the classifier to compute logits.
-    #     @param    input_ids (torch.Tensor): an input tensor with shape (batch_size,
-    #                   max_length)
-    #     @param    attention_mask (torch.Tensor): a tensor that hold attention mask
-    #                   information with shape (batch_size, max_length)
-    #     @return   logits (torch.Tensor): an output tensor with shape (batch_size,
-    #                   num_labels)
-    #     """
-    #     # Feed input to BERT
-    #     outputs = self.bert(input_ids=input_ids,
-    #                         attention_mask=attention_mask)
-        
-    #     # Extract the last hidden state of the token `[CLS]` for classification task
-    #     last_hidden_state_cls = outputs[0][:, 0, :]
-
-    #     # Feed input to classifier to compute logits
-    #     logits = self.classifier(last_hidden_state_cls)
-
-    #     return logits
-    
-    def forward(self, input_ids, attention_mask):
-        """
-        Feed input to BERT and the classifier to compute logits.
-        @param    input_ids (torch.Tensor): an input tensor with shape (batch_size,
-                      max_length)
-        @param    attention_mask (torch.Tensor): a tensor that hold attention mask
-                      information with shape (batch_size, max_length)
-        @return   logits (torch.Tensor): an output tensor with shape (batch_size,
-                      num_labels)
-        """
-        # Feed input to BERT
-        pool_features, cls_features = self.bert(input_ids=input_ids,
-                            attention_mask=attention_mask)
-        
-        # Feed input to classifier to compute logits
-        if self.pool:
-            logits = self.classifier(pool_features.sum(axis=1))
-        else:
-            logits = self.classifier(cls_features)
-        return logits
-    
-    def fit(self, train_dataloader, val_dataloader, epochs, validation=True, seed=1):
-        set_seed(seed)
-        return train(self, train_dataloader, val_dataloader, epochs, validation)
-
-    def predict_proba(self, test_dataloader):
-        return bert_predict(self, test_dataloader)
-
-    def predict(self, test_dataloader):
-        probs = bert_predict(self, test_dataloader)
-        preds = probs[:, 1]    
-        y_hat = np.where(preds >= 0.5, 1, 0)
-        return y_hat
 
 def __get_device(silent=True):
     if torch.cuda.is_available():       
@@ -203,21 +115,21 @@ def set_seed(seed_value=42):
     torch.manual_seed(seed_value)
     torch.cuda.manual_seed_all(seed_value)
 
-def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=False):
+def train(model, train_dataloader, val_dataloader=None, epochs=4,lr=5e-5, eps=1e-8,num_warmup_steps=0, evaluation=False):
     """Train the BertClassifier model.
     """
     # Specify loss function
     loss_fn = nn.CrossEntropyLoss()
     # Create the optimizer
     optimizer = AdamW(model.parameters(),
-                      lr=5e-5,    # Default learning rate
-                      eps=1e-8    # Default epsilon value
+                      lr=lr,    
+                      eps=eps   
                       )
     # Total number of training steps
     total_steps = len(train_dataloader) * epochs
     # Set up the learning rate scheduler
     scheduler = get_linear_schedule_with_warmup(optimizer,
-                                                num_warmup_steps=0, # Default value
+                                                num_warmup_steps=num_warmup_steps,
                                                 num_training_steps=total_steps)
     device = __get_device()
     model.to(device)
@@ -271,6 +183,7 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
         # =======================================
         #               Evaluation
         # =======================================
+        val_accuracy = 0
         if evaluation:
             # After the completion of each training epoch, measure the model's performance
             # on our validation set.
@@ -281,7 +194,7 @@ def train(model, train_dataloader, val_dataloader=None, epochs=4, evaluation=Fal
             print("-"*70)
         print("\n")    
     print("Training complete!")
-    return model
+    return model, val_accuracy
 
 
 def evaluate(model, loss_fn, val_dataloader):
@@ -359,3 +272,101 @@ def get_sequential_sample_loader(inputs, masks, labels, batch_size):
     dataloader = DataLoader(data, sampler=sampler, batch_size=batch_size)
 
     return dataloader
+
+def hyperparameter_search(train_data, val_data, freeze_bert, pool, n_confs=-1, hyperparams=None):
+  #n_confs can be used to sample a fixed number of (random) hyperparameter configurations
+  #n_confs=-1 will try all configurations
+  
+    results = []
+    if not hyperparams:
+        hyperparams = { "lr":[5e-6,5e-5,1e-4],
+                    "num_warmup_steps":[0,1,2]
+            }  
+    confs = list(itertools.product(hyperparams["lr"],hyperparams["num_warmup_steps"]))
+    #shuffle confs
+    random.shuffle(confs)
+    print(confs)
+    if n_confs > -1:
+        confs = confs[:n_confs]
+    for conf in confs:
+        print("Testing conf: {}".format(repr(conf)))
+        lr = conf[0]
+        num_warmup_steps = conf[1]
+        bert_classifier = BertClassifier(freeze_bert=freeze_bert, pool=pool)
+        val_acc = bert_classifier.fit(train_data, val_data, epochs=2, validation=True)
+        results.append([lr, num_warmup_steps, val_acc])
+    return results
+
+# Create the BertClassfier class
+class BertClassifier(nn.Module):
+    """Bert Model for Classification Tasks.
+    """
+    def __init__(self, freeze_bert=False, pool=True):
+        """
+        @param    bert: a BertModel object
+        @param    classifier: a torch.nn.Module classifier
+        @param    freeze_bert (bool): Set `False` to fine-tune the BERT model
+        """
+        super(BertClassifier, self).__init__()
+        # Specify hidden size of BERT, hidden size of our classifier, and number of labels
+        D_in, H, D_out = 768, 50, 2
+        if pool:            
+            print("BERT > POOl features")
+        else:
+            print("BERT > CLS features")
+        self.pool = pool
+        # Instantiate BERT model
+        self.bert = BertModel.from_pretrained('bert-base-uncased', output_hidden_states=False)
+
+        # Instantiate an one-layer feed-forward classifier
+        # self.classifier = nn.Sequential(
+        #     nn.Linear(D_in, H),
+        #     nn.ReLU(),
+        #     #nn.Dropout(0.5),
+        #     nn.Linear(H, D_out)
+        # )
+
+        self.classifier = nn.Sequential(           
+            nn.ReLU(),            
+            nn.Linear(D_in, D_out)
+        )
+
+        # Freeze the BERT model
+        if freeze_bert:
+            for param in self.bert.parameters():
+                param.requires_grad = False
+    
+    def forward(self, input_ids, attention_mask):
+        """
+        Feed input to BERT and the classifier to compute logits.
+        @param    input_ids (torch.Tensor): an input tensor with shape (batch_size,
+                      max_length)
+        @param    attention_mask (torch.Tensor): a tensor that hold attention mask
+                      information with shape (batch_size, max_length)
+        @return   logits (torch.Tensor): an output tensor with shape (batch_size,
+                      num_labels)
+        """
+        # Feed input to BERT
+        pool_features, cls_features = self.bert(input_ids=input_ids,
+                            attention_mask=attention_mask)
+        
+        # Feed input to classifier to compute logits
+        if self.pool:
+            logits = self.classifier(pool_features.sum(axis=1))
+        else:
+            logits = self.classifier(cls_features)
+        return logits
+    
+    def fit(self, train_dataloader, val_dataloader, epochs, validation=True, seed=1):
+        set_seed(seed)
+        _, val_acc = train(self, train_dataloader, val_dataloader, epochs=epochs, evaluation=validation)
+        return round(val_acc, 3)
+
+    def predict_proba(self, test_dataloader):
+        return bert_predict(self, test_dataloader)
+
+    def predict(self, test_dataloader):
+        probs = bert_predict(self, test_dataloader)
+        preds = probs[:, 1]    
+        y_hat = np.where(preds >= 0.5, 1, 0)
+        return y_hat

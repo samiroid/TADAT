@@ -19,7 +19,7 @@ def get_BERT(pretrained_model=DEFAULT_BERT_MODEL, hidden_states=False):
     model = BertModel.from_pretrained(pretrained_model, output_hidden_states=hidden_states)
     return tokenizer, model
 
-def transformer_encode_batches(docs, tokenizer=None, model=None, batchsize=DEFAULT_BATCH_SIZE, device='cpu'):    
+def encode_all(docs, tokenizer=None, model=None, batchsize=DEFAULT_BATCH_SIZE, device='cpu'):    
     #BERT
     if not tokenizer:
         tokenizer = BertTokenizer.from_pretrained(DEFAULT_BERT_MODEL)
@@ -33,7 +33,7 @@ def transformer_encode_batches(docs, tokenizer=None, model=None, batchsize=DEFAU
         if len(batch) > 0:
             sys.stdout.write("\nbatch:{}/{} (size: {})".format(j+1,n_batches, str(len(batch))))
             sys.stdout.flush()
-            cls_vec, pool_vec = transformer_encode(batch,tokenizer, model,device)            
+            cls_vec, pool_vec = get_features(batch,tokenizer, model,device)            
             cls_vectors.append(cls_vec)
             pool_vectors.append(pool_vec)            
     cls_vectors = np.vstack(cls_vectors)
@@ -41,7 +41,7 @@ def transformer_encode_batches(docs, tokenizer=None, model=None, batchsize=DEFAU
         
     return cls_vectors, pool_vectors
 
-def transformer_encode(docs, tokenizer, encoder, device):
+def get_features(docs, tokenizer, encoder, device):
     tokens_tensors = []
     segments_tensors = []
     tokenized_texts = []    

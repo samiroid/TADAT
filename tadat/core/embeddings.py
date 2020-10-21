@@ -126,21 +126,21 @@ def save_txt(path, E, wrd2idx):
             fod.write(u"%s %s\n" % (word, " ".join(map(str, emb))))
 
 
-def project_vectors(X_in, model='tsne', perp=10, n_components=2):    
-    if model == 'tsne':        
-        X_in = X_in.reshape((X_in.shape[0], -1)).astype('float64')
-        if perp is not None:
-            X_out = bh_sne(X_in, perplexity=perp)    
-        else:
-            X_out = bh_sne(X_in)    
-    elif model == 'pca':
-        pca = PCA(n_components=n_components, whiten=True)
-        pca.fit(X_in)
-        X_out = pca.transform(X_in)        
-    else:
-        raise NotImplementedError
+# def project_vectors(X_in, model='tsne', perp=10, n_components=2):    
+#     if model == 'tsne':        
+#         X_in = X_in.reshape((X_in.shape[0], -1)).astype('float64')
+#         if perp is not None:
+#             X_out = bh_sne(X_in, perplexity=perp)    
+#         else:
+#             X_out = bh_sne(X_in)    
+#     elif model == 'pca':
+#         pca = PCA(n_components=n_components, whiten=True)
+#         pca.fit(X_in)
+#         X_out = pca.transform(X_in)        
+#     else:
+#         raise NotImplementedError
     
-    return X_out
+#     return X_out
 
 def similarity_rank(X, wrd2idx,top_k=None):        
 
