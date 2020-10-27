@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import RandomState
+from numpy.random import RandomState
 import os
 import time
 import torch
