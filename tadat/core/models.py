@@ -4,7 +4,18 @@ import os
 import time
 import torch
 import uuid
-#torch model
+
+def get_device(silent=False):
+    if torch.cuda.is_available():       
+        device = torch.device("cuda")
+        if not silent:            
+            print('GPU device name:', torch.cuda.get_device_name(0))
+    else:
+        device = torch.device("cpu")
+        if not silent:
+            print('No GPU available, using the CPU instead.')        
+    return device
+
 class MyLinearModel(torch.nn.Module):
     def __init__(self, in_dim, out_dim, loss_fn, optimizer=None, 
                  default_lr=None, init_seed=None, n_epochs=4, 
@@ -32,8 +43,8 @@ class MyLinearModel(torch.nn.Module):
             else:
                 self.optimizer = torch.optim.Adam(self.model.parameters())
 
-    def forward(self, in_dim, out_dim):
-        return self.model(in_dim, out_dim)
+    def forward(self, X):
+        return self.model(X)
 
     def fit(self, X_train, Y_train, X_val, Y_val):      
         X_train = torch.from_numpy(X_train.astype(np.float32))
@@ -122,13 +133,24 @@ class MyLinearModel(torch.nn.Module):
         y_hat = (y_hat_prob > threshold)
         return y_hat
 
-def get_device(silent=False):
-    if torch.cuda.is_available():       
-        device = torch.device("cuda")
-        if not silent:            
-            print('GPU device name:', torch.cuda.get_device_name(0))
-    else:
-        device = torch.device("cpu")
-        if not silent:
-            print('No GPU available, using the CPU instead.')        
-    return device
+class MultiSeqLinearModel(torch.nn.Module):
+    def __init__(self, in_dim, out_dim, loss_fn, C=1, optimizer=None, 
+                 default_lr=None, init_seed=None, n_epochs=4, 
+                 batch_size=None, shuffle_seed=None, silent=False, 
+                 shuffle=False, device=None):
+
+        super().__init__(in_dim, out_dim, loss_fn, optimizer, 
+                 default_lr, init_seed, n_epochs, 
+                 batch_size, shuffle_seed, silent, 
+                 shuffle, device)
+        self.C = C
+    
+    def forward(self, X):
+        Y_tilde = self.forward(X)
+        scaling = X.shape[1]/self.C
+        #(y_max+y_mean*N/C) / 1+N/C
+        Y_max = torch.max(Y_tilde, dim=1)
+        Y_mean = torch.mean(Y_tilde, dim=1)        
+        Y_hat = (Y_max+Y_mean*scaling)/1+scaling
+        return Y_hat
+

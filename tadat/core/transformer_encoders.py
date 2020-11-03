@@ -117,21 +117,18 @@ def encode_multi_sequences(docs, max_sequences, tokenizer=None, encoder=None,
             feats = cls_vec if cls_features else pool_vec                       
             if tmp_fname:                    
                 #save partial features     
-                np.save(tmp_fname, feats)
+                np.save(tmp_fname+"_"+str(j), feats)
             else:
                 vectors.append(feats)                
     #combine all partial features
     if tmp_fname:
         print("[reconstructing features]")
-        with open(tmp_fname+".npy", 'rb') as f:
-            while True:
-                try:
-                    x = np.load(f)
-                    vectors.append(x)
-                except ValueError:
-                    break
-        #remove temporary file
-        os.remove(tmp_fname+".npy")
+        for j in range(n_batches):
+            with open(tmp_fname+"_{}.npy".format(j), 'rb') as f:                            
+                x = np.load(f)
+                vectors.append(x)                
+            #remove temporary file
+            # os.remove(tmp_fname+"_{}.npy".format(j))
         
     vectors = np.vstack(vectors)        
     return vectors
