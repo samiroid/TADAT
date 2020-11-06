@@ -29,22 +29,22 @@ class MyLinearModel(torch.nn.Module):
         self.silent = silent
         self.loss_fn = loss_fn
         self.n_epochs = n_epochs
-        self.model = torch.nn.Linear(in_dim, out_dim)
+        self.linear = torch.nn.Linear(in_dim, out_dim)
         if init_seed: 
             torch.manual_seed(init_seed)        
             #initialize random weights
-            torch.nn.init.uniform_(self.model.weight, a=-1, b=1)
+            torch.nn.init.uniform_(self.linear.weight, a=-1, b=1)
         if optimizer:
-            self.optimizer = optimizer(self.model.parameters())
+            self.optimizer = optimizer(self.linear.parameters())
         else:
             if default_lr:
-                self.optimizer = torch.optim.Adam(self.model.parameters(), 
+                self.optimizer = torch.optim.Adam(self.linear.parameters(), 
                                                   lr=default_lr)
             else:
-                self.optimizer = torch.optim.Adam(self.model.parameters())
+                self.optimizer = torch.optim.Adam(self.linear.parameters())
 
     def forward(self, X):
-        return self.model(X)
+        return torch.sigmoid(self.linear(X))
 
     def fit(self, X_train, Y_train, X_val, Y_val):      
         X_train = torch.from_numpy(X_train.astype(np.float32))
@@ -64,7 +64,7 @@ class MyLinearModel(torch.nn.Module):
         Y_val_ = Y_val.to(self.device)
         X_train_ = X_train.to(self.device)
         Y_train_ = Y_train.to(self.device)
-        self.model = self.model.to(self.device) 
+        self.linear = self.linear.to(self.device) 
         idx = torch.tensor(rng.permutation(train_len))
         idx_ = idx.to(self.device) 
 
@@ -87,7 +87,7 @@ class MyLinearModel(torch.nn.Module):
             for j in range(n_batches):                
                 x_train = X_train_[j*self.batch_size:(j+1)*self.batch_size, :]
                 y_train = Y_train_[j*self.batch_size:(j+1)*self.batch_size]                
-                y_hat_train = self.model(x_train)
+                y_hat_train = self.forward(x_train)
                 train_loss = self.loss_fn(y_hat_train, y_train)                
                 train_loss_value = train_loss.item()
                 self.optimizer.zero_grad()
@@ -95,7 +95,7 @@ class MyLinearModel(torch.nn.Module):
                 self.optimizer.step()                
                 train_losses.append(train_loss_value)        
                 val_losses.append(val_loss_value)   
-            outputs_val = self.model(X_val_)
+            outputs_val = self.forward(X_val_)
             val_loss = self.loss_fn(outputs_val, Y_val_)      
             val_loss_value =  val_loss.item()     
             if val_loss_value < best_val_loss:    
@@ -103,7 +103,7 @@ class MyLinearModel(torch.nn.Module):
                 best_val_loss = val_loss
                 #save best model
                 # print("[updating best model]")
-                torch.save(self.model.state_dict(), tmp_model_fname)
+                torch.save(self.linear.state_dict(), tmp_model_fname)
             elif val_loss_value > best_val_loss - loss_margin:                
                 n_val_drops+=1
                 # if n_val_drops == MAX_VAL_DROPS:
@@ -112,29 +112,28 @@ class MyLinearModel(torch.nn.Module):
             if (it + 1) % 50 == 0 and not self.silent:
                 time_elapsed = time.time() - t0_epoch
                 print(f'[Epoch {it+1}/{self.n_epochs} | Training loss: {train_loss_value:.4f} | Val loss: {val_loss_value:.4f} | ET: {time_elapsed:.2f}]')
-        self.model.load_state_dict(torch.load(tmp_model_fname))
+        self.linear.load_state_dict(torch.load(tmp_model_fname))
         os.remove(tmp_model_fname)
-        # self.model = self.model.cpu()
+        # self.linear = self.linear.cpu()
         return train_losses, val_losses  
 
     def predict_proba(self, X):        
         X = torch.from_numpy(X.astype(np.float32))
         X_ = X.to(self.device)        
-        self.model = self.model.to(self.device) 
+        self.linear = self.linear.to(self.device) 
 
         with torch.no_grad():
-            y_hat_prob = torch.nn.functional.sigmoid(self.model(X_))
+            y_hat_prob = self.forward(X_)
             y_hat_prob =  y_hat_prob.cpu().numpy()
         return y_hat_prob
 
-    def predict(self, X):        
-        y_hat_prob = self.predict_proba(X)
-        threshold = 0.5 
+    def predict(self, X, threshold=0.5):        
+        y_hat_prob = self.predict_proba(X)        
         y_hat = (y_hat_prob > threshold)
         return y_hat
 
-class MultiSeqLinearModel(torch.nn.Module):
-    def __init__(self, in_dim, out_dim, loss_fn, C=1, optimizer=None, 
+class MultiSeqLinearModel(MyLinearModel):
+    def __init__(self, in_dim, out_dim, loss_fn, C=2, optimizer=None, 
                  default_lr=None, init_seed=None, n_epochs=4, 
                  batch_size=None, shuffle_seed=None, silent=False, 
                  shuffle=False, device=None):
@@ -145,12 +144,29 @@ class MultiSeqLinearModel(torch.nn.Module):
                  shuffle, device)
         self.C = C
     
-    def forward(self, X):
-        Y_tilde = self.forward(X)
-        scaling = X.shape[1]/self.C
+    def forward(self, X):        
+        max_seq_len = X.shape[1]        
+        seq_lens = []
+        #prediction
+        Y_tilde = super().forward(X)          
+        #pad the predictions as the input      
+        padding = torch.ones_like(Y_tilde)
+        #create padding mask
+        for n in range(X.shape[0]):
+            #torch.where(torch.all(X[n, ...] == 0, axis=1))[0] gives a list of indices where the columns are all zeroes 
+            zeroed_columns = torch.where(torch.all(X[n, ...] == 0, axis=1))[0]            
+            #zero out those columns on the predictions
+            padding[n, zeroed_columns] = 0
+            #storing the sequence len so that we can compute the mean
+            #the size of the list gives us the number of zeroed columns 
+            seq_lens.append(max_seq_len-len(zeroed_columns))            
+        #padding                        
+        Y_tilde_ = Y_tilde*padding
+        seq_lens_ = torch.tensor(seq_lens, dtype=torch.long, device=self.device)
         #(y_max+y_mean*N/C) / 1+N/C
-        Y_max = torch.max(Y_tilde, dim=1)
-        Y_mean = torch.mean(Y_tilde, dim=1)        
-        Y_hat = (Y_max+Y_mean*scaling)/1+scaling
+        scaling = max_seq_len/self.C        
+        Y_max = torch.max(Y_tilde_, dim=1)[0].squeeze()
+        Y_mean = torch.sum(Y_tilde_, dim=1).squeeze()/seq_lens_        
+        Y_hat = (Y_max+Y_mean*scaling)/(1+scaling)        
+        Y_hat = Y_hat.reshape(-1,1)
         return Y_hat
-
