@@ -89,7 +89,7 @@ class MyLinearModel(torch.nn.Module):
                 x_train = X_train_[j*self.batch_size:(j+1)*self.batch_size, :]
                 y_train = Y_train_[j*self.batch_size:(j+1)*self.batch_size]                
                 y_hat_train = self.forward(x_train)
-                print(y_hat_train)
+                # print(y_hat_train)
                 train_loss = self.loss_fn(y_hat_train, y_train)                
                 train_loss_value = train_loss.item()
                 self.optimizer.zero_grad()
@@ -129,9 +129,9 @@ class MyLinearModel(torch.nn.Module):
             y_hat_prob =  y_hat_prob.cpu().numpy()
         return y_hat_prob
 
-    def predict(self, X, threshold=0.5):        
+    def predict(self, X):        
         y_hat_prob = self.predict_proba(X)
-        
+        threshold = 0.5 
         y_hat = (y_hat_prob > threshold)
         return y_hat
 
@@ -171,4 +171,13 @@ class MultiSeqLinearModel(MyLinearModel):
         Y_hat = (Y_max+Y_mean*scaling)/(1+scaling)        
         Y_hat = Y_hat.reshape(-1,1)
         return Y_hat
-  
+
+    def predict_proba(self, X):        
+        X = torch.from_numpy(X.astype(np.float32))
+        X_ = X.to(self.device)        
+        self.model = self.model.to(self.device) 
+
+        with torch.no_grad():
+            y_hat_prob = self.forward(X_)
+            y_hat_prob =  y_hat_prob.cpu().numpy()
+        return y_hat_prob
