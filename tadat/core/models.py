@@ -23,7 +23,10 @@ class MyLinearModel(torch.nn.Module):
                  batch_size=None, shuffle_seed=None, silent=False, 
                  shuffle=False, device=None):
         super().__init__()
-        if not device: self.device = get_device(silent=True)
+        if not device: 
+            self.device = get_device(silent=True)
+        else:
+            self.device = device
         self.batch_size = batch_size
         self.shuffle_seed = shuffle_seed
         self.shuffle = shuffle
@@ -108,10 +111,10 @@ class MyLinearModel(torch.nn.Module):
                 torch.save(self.model.state_dict(), tmp_model_fname)
             elif val_loss_value > best_val_loss - loss_margin:                
                 n_val_drops+=1
-                # if n_val_drops == MAX_VAL_DROPS:
-                #     print("[early stopping: {} epochs]".format(it))
-                    # break
-            if (it + 1) % 50 == 0 and not self.silent:
+                if n_val_drops == MAX_VAL_DROPS:
+                    print("[early stopping: {} epochs]".format(it))
+                    break
+            if (it + 1) % 10 == 0 and not self.silent:
                 time_elapsed = time.time() - t0_epoch
                 print(f'[Epoch {it+1}/{self.n_epochs} | Training loss: {train_loss_value:.4f} | Val loss: {val_loss_value:.4f} | ET: {time_elapsed:.2f}]')
         self.model.load_state_dict(torch.load(tmp_model_fname))
