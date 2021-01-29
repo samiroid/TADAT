@@ -1,6 +1,9 @@
 from collections import defaultdict
 import numpy as np
 import os
+import re
+import twokenize
+
 try:
     from ipdb import set_trace
 except ImportError:
@@ -37,7 +40,18 @@ def preprocess(d, stop_words=()):
     #reduce character repetitions
     d = max_repetitions(d)
     return d
-    
+
+def mask_user_mentions(txt):
+     #replace user mentions with token '@user'
+    user_regex = r".?@.+?( |$)|<@mention>"    
+    txt = re.sub(user_regex," @user ", txt, flags=re.I)
+    return txt
+
+def mask_urls(txt):
+    #replace urls with token 'url'
+    txt = re.sub(twokenize.url," url ", txt, flags=re.I)
+    return txt
+
 def flatten_list(l):
     return [item for sublist in l for item in sublist]    
 

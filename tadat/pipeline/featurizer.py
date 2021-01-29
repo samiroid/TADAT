@@ -29,24 +29,24 @@ def run(inputs, opts):
 				for agg in opts.boe:
 					fname = basename + "-boe-" + agg.lower()
 					print("\t > BOE ({})".format(fname))
-					E, _ = embeddings.read_embeddings(opts.embeddings, wrd2idx=vocabulary)
+					E, _ = embeddings.read_embeddings(opts.embeddings, vocab=vocabulary)
 					boe = features.BOE(X, E, agg=agg)					
 					np.save(opts.out_folder + fname, boe)
 			if opts.w2v:				
 				fname = basename + "-w2v"
 				print("\t > W2V ({})".format(fname))
-				E, _ = embeddings.read_embeddings(opts.embeddings, wrd2idx=vocabulary)
+				E, _ = embeddings.read_embeddings(opts.embeddings, vocab=vocabulary)
 				emb = features.BOE(X, E, agg="bin")					
 				np.save(opts.out_folder + fname, emb)
 			if opts.u2v:				
 				fname = basename + "-u2v"
 				print("\t > u2v ({})".format(fname))
-				E, _ = embeddings.read_embeddings(opts.embeddings, wrd2idx=vocabulary)
+				E, _ = embeddings.read_embeddings(opts.embeddings, vocab=vocabulary)
 				emb = features.BOE(X, E, agg="bin")					
 				np.save(opts.out_folder + fname, emb)
 			if opts.nlse:
 				fname = basename + "_NLSE.pkl"				
-				E, _ = embeddings.read_embeddings(opts.embeddings, wrd2idx=vocabulary)
+				E, _ = embeddings.read_embeddings(opts.embeddings, vocab=vocabulary)
 				np.save(fname, E)
 
 def get_parser():

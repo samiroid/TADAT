@@ -6,9 +6,9 @@ def get_words_vocab(docs, max_words=None, min_freq=1, include_pad_token=False):
         Compute a dictionary index mapping words into indices
     """
 
-    words = [w for m in docs for w in m.split()]
+    words = [w for m in docs for w in m.split(" ")]
     cnt = Counter(words)
-    word_cnts = [(w,c) for (w,c) in sorted(cnt.items(), key=lambda x:x[1],reverse=True) if c>min_freq]
+    word_cnts = [(w,c) for (w,c) in sorted(cnt.items(), key=lambda x:x[1],reverse=True) if c>=min_freq]
     #keep only the 'max_words' most frequent tokens
     if max_words:
         word_cnts = word_cnts[:max_words]

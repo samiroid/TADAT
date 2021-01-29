@@ -13,6 +13,7 @@ def get_vocabulary(fnames, max_words=None):
 	datasets = []	
 	for fname in fnames:		
 		ds = read_dataset(fname)
+		# set_trace()
 		datasets.append(ds)
 	datasets = flatten_list(datasets)
 	vocab_docs = [x[1] for x in datasets]		
@@ -59,6 +60,7 @@ def get_parser():
 	par.add_argument('-cv', type=int, help='crossfold')
 	par.add_argument('-cv_from', type=str, nargs='*', help="files for crossvalidation")
 	par.add_argument('-embeddings', type=str, nargs='+', help='path to embeddings')	
+	par.add_argument('-embedding_encoding', type=str, default="utf-8", help='encoding of the embedding file. default = utf-8')	
 	par.add_argument('-vocab_size', type=int, \
 						help='max number of types to keep in the vocabulary')
 	par.add_argument('-vocab_from', type=str, nargs='*', \
@@ -103,7 +105,8 @@ if __name__ == "__main__":
 	#extract embeddings
 	if args.embeddings is not None:
 		for vecs_in in args.embeddings:
-			print("[reading embeddings @ {}]".format(vecs_in))
+			print("[reading embeddings @ {} | enc: {}]".format(vecs_in, args.embedding_encoding))
 			vecs_out = args.out_folder + os.path.basename(vecs_in)
 			print("[saving embeddings @ {}]".format(vecs_out))
-			extract_embeddings(vecs_in, vecs_out, words)
+			set_trace()
+			extract_embeddings(vecs_in, vecs_out, words, encoding=args.embedding_encoding)
