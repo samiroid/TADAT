@@ -107,6 +107,5 @@ if __name__ == "__main__":
 		for vecs_in in args.embeddings:
 			print("[reading embeddings @ {} | enc: {}]".format(vecs_in, args.embedding_encoding))
 			vecs_out = args.out_folder + os.path.basename(vecs_in)
-			print("[saving embeddings @ {}]".format(vecs_out))
-			set_trace()
+			print("[saving embeddings @ {}]".format(vecs_out))			
 			extract_embeddings(vecs_in, vecs_out, words, encoding=args.embedding_encoding)
