@@ -2,6 +2,7 @@ import codecs
 from tadat.core.vectorizer import idx2word
 import numpy as np
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE 
 import os
 import sys
 import torch
@@ -39,7 +40,7 @@ def read_embeddings(path, vocab, encoding="utf-8"):
     perc = ooevs *100./len(vocab)
     print ("%d/%d (%2.2f %%) words in vocabulary found no embedding" % (ooevs, len(vocab), perc))     
 
-    return E, vocab
+    return E
 
 def extract_embeddings(path_in, path_out, vocab, encoding="utf-8"):
 
@@ -101,21 +102,19 @@ def similarity_rank(X, wrd2idx,top_k=None):
 
     return items, idxs, item_ranking, sim_scores
 
-# def project_vectors(X_in, model='tsne', perp=10, n_components=2):    
-#     if model == 'tsne':        
-#         X_in = X_in.reshape((X_in.shape[0], -1)).astype('float64')
-#         if perp is not None:
-#             X_out = bh_sne(X_in, perplexity=perp)    
-#         else:
-#             X_out = bh_sne(X_in)    
-#     elif model == 'pca':
-#         pca = PCA(n_components=n_components, whiten=True)
-#         pca.fit(X_in)
-#         X_out = pca.transform(X_in)        
-#     else:
-#         raise NotImplementedError
-    
-#     return X_out
+def project_vectors(X_in, model='tsne', perp=10, n_components=2):    
+    if model == 'tsne':                
+        if perp is not None:
+            tsne =  TSNE(n_components=n_components, perplexity=perp)            
+        else:
+            tsne =  TSNE(n_components=n_components)
+        X_out = tsne.fit_transform(X_in)        
+    elif model == 'pca':
+        pca = PCA(n_components=n_components, whiten=True)        
+        X_out = pca.fit_transform(X_in)        
+    else:
+        raise NotImplementedError    
+    return X_out
 
 
 
