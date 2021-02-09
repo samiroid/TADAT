@@ -1,3 +1,5 @@
+from matplotlib import pyplot as plt
+
 BLUE_M = "#85C1E9"
 BLUE_L = "#3498DB"
 BLUE_S = "#A9CCE3"
@@ -88,4 +90,19 @@ def plot_decay(df, ax, x, ys, cols=None,
     #setup legend
     ax.legend(loc='upper right', bbox_to_anchor=[1.02, 1.05], fancybox=True, shadow=True)
     return ax
-    
+
+
+def plot_projection(X, labels=None, label_dict=None):
+    vis_x = X[:, 0]
+    vis_y = X[:, 1]
+    if labels and label_dict:
+        plt.scatter(vis_x, vis_y, c=labels, cmap=plt.cm.get_cmap("RdBu", len(label_dict)), marker='o',alpha=0.7)
+    else:
+        plt.scatter(vis_x, vis_y, marker='o')
+    # if labels:
+    #     plt.scatter(vis_x, vis_y, c=digits.target, cmap=plt.cm.get_cmap("jet", 10), marker='o')
+    # else:
+    #     plt.scatter(vis_x, vis_y, cmap=plt.cm.get_cmap("jet", 10), marker='o')
+    # plt.colorbar(ticks=range(len(label_dict)))
+    # plt.clim(-0.5, 9.5)
+    plt.show()

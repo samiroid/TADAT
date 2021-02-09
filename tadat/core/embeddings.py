@@ -30,6 +30,7 @@ def embeddings_to_dict(path, vocab, encoding="utf-8"):
 def read_embeddings(path, vocab, encoding="utf-8"):    
     w2v = embeddings_to_dict(path,vocab,encoding)        
     common_vocab = set(w2v).intersection(set(vocab))    
+    # from ipdb import set_trace; set_trace()
     #build embedding matrix
     emb_size = list(w2v.values())[0].shape[0]    
     E = np.zeros((emb_size, len(vocab)))    
@@ -80,10 +81,9 @@ def save_txt(path, E, wrd2idx):
             emb = E[:,idx]
             fod.write(u"%s %s\n" % (word, " ".join(map(str, emb))))
 
-def similarity_rank(X, wrd2idx,top_k=None):        
-
-    items = wrd2idx.keys()#[:max_users]
-    idxs  = wrd2idx.values()#[:max_users]
+def similarity_rank(X, idxs,top_k=None):        
+    # items = wrd2idx.keys()#[:max_users]
+    # idxs  = wrd2idx.values()#[:max_users]
     if top_k is None:
         top_k = len(idxs)
     item_ranking = np.zeros((top_k,len(idxs)))
@@ -99,24 +99,24 @@ def similarity_rank(X, wrd2idx,top_k=None):
         ranked_simz = simz[rank]
         item_ranking[:,i] = rank[:top_k]
         sim_scores[:,i]   = ranked_simz[:top_k]
+    
+    sim_scores = np.nan_to_num(sim_scores)
+    # return items, idxs, item_ranking, sim_scores
+    return item_ranking, sim_scores
 
-    return items, idxs, item_ranking, sim_scores
-
-def project_vectors(X_in, model='tsne', perp=10, n_components=2):    
+def project_vectors(X_in, model='tsne', perp=10, N=2):    
     if model == 'tsne':                
         if perp is not None:
-            tsne =  TSNE(n_components=n_components, perplexity=perp)            
+            tsne =  TSNE(n_components=N, perplexity=perp, n_jobs=-1)            
         else:
-            tsne =  TSNE(n_components=n_components)
+            tsne =  TSNE(n_components=N, n_jobs=-1)
         X_out = tsne.fit_transform(X_in)        
     elif model == 'pca':
-        pca = PCA(n_components=n_components, whiten=True)        
+        pca = PCA(n_components=N, whiten=True)        
         X_out = pca.fit_transform(X_in)        
     else:
         raise NotImplementedError    
-    return X_out
-
-
+    return X_out    
 
 # def old_embeddings_to_dict(path, max_words=None):
 #     """

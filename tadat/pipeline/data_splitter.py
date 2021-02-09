@@ -1,6 +1,6 @@
 import argparse
 from bs4 import BeautifulSoup
-from ipdb import set_trace
+# from ipdb import set_trace
 import os
 import sys
 #local
