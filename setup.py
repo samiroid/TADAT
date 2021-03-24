@@ -20,5 +20,5 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     python_requires='>=3.6',
     install_requires=["pandas","torch","transformers","numpy","scikit-learn",
-                        "beautifulsoup4","scipy"]
+                        "beautifulsoup4","scipy","twokenize"]
 )
