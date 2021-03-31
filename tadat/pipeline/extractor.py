@@ -48,7 +48,8 @@ def main(fnames, word_vocab, label_vocab, opts):
 		X, Y = vectorize(ds, word_vocab, label_vocab)
 		basename = os.path.splitext(os.path.basename(name))[0]
 		path = opts.out_folder + basename
-		print("[saving data @ {}]".format(path))
+		N = len(Y)
+		print("[saving data (N={}) @ {}]".format(N, path))
 		with open(path, "wb") as fid:
 			pickle.dump([X, Y, word_vocab, label_vocab], fid, -1)
 	return word_vocab
@@ -79,11 +80,12 @@ if __name__ == "__main__":
 	#loop through cross-validation folds (if any)
 	if args.cv is None:
 		all_fnames = args.input
-		
+		print("[computing vocabulary]")
 		if args.vocab_from is not None:
 			words = get_vocabulary(args.vocab_from, args.vocab_size)
 		else:
 			words = get_vocabulary([args.input[0]], args.vocab_size)		
+		print("[vocabulary size: {}]".format(len(words)))
 		labels = get_labels(args.input)
 		main(all_fnames, words, labels, args)
 	else:
@@ -100,6 +102,7 @@ if __name__ == "__main__":
 			else:
 				words = get_vocabulary([args.cv_fnames[0]], args.vocab_size)
 			labels = get_labels(args.input)
+			print("[vocabulary size: {}]".format(len(words)))
 			main(cv_fnames, words, labels, args)						
 			
 	#extract embeddings
