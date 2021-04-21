@@ -19,7 +19,10 @@ def run(inputs, opts):
 			if opts.bow is not None:
 				for agg in opts.bow:
 					fname = basename + "-bow-" + agg.lower()
-					print("\t > BOW ({})".format(fname))
+					if opts.sparse_bow:
+						print("\t > sparse BOW ({})".format(fname))
+					else:
+						print("\t > BOW ({})".format(fname))
 					if agg == "bin":
 						bow = features.BOW(X, len(vocabulary), opts.sparse_bow)
 					elif agg == "freq":

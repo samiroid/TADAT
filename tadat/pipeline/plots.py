@@ -21,6 +21,35 @@ ALL_COLORS = BLUES + GREENS + GRAYS + [YELLOW]
 PALETTE_1 =  [YELLOW, GRAY_L, GRAY_M, GRAY_S, BLUE_S, BLUE_M, BLUE_M]
 MIN_BAR_DIFF = 0.015
 
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.transforms as mtransforms
+
+# https://stackoverflow.com/questions/49192667/how-to-draw-a-line-through-a-scatter-graph-with-no-overflow
+def axaline(m,y0, ax=None, **kwargs):
+    if not ax:
+        ax = plt.gca()
+    tr = mtransforms.BboxTransformTo(
+            mtransforms.TransformedBbox(ax.viewLim, ax.transScale))  + \
+         ax.transScale.inverted()
+    aff = mtransforms.Affine2D.from_values(1,m,0,0,0,y0)
+    trinv = ax.transData
+    line = plt.Line2D([0,1],[0,0],transform=tr+aff+trinv, **kwargs)
+    ax.add_line(line)
+
+# x = np.random.rand(20)*6-0.7
+# y = (np.random.rand(20)-.5)*4
+# c = (x > 3).astype(int)
+
+# fig, ax = plt.subplots()
+# ax.scatter(x,y, c=c, cmap="bwr")
+
+# # draw y=m*x+y0 into the plot
+# m = 0.4; y0 = -1
+# axaline(m,y0, ax=ax, color="limegreen", linewidth=5)
+
+# plt.show()
+
 def plot_df(df, ax, x, ys, cols=None, 
             min_y=0, max_y=1, 
             ylabel=None, xlabel=None,

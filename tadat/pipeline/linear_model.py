@@ -25,7 +25,12 @@ def get_features(data_path, features):
 		#get features
 		for ft in features:			
 			feat_suffix = "-"+ft+".npy" 					
-			x = np.load(data_path+feat_suffix)
+			x = np.load(data_path+feat_suffix, allow_pickle=True)
+			#check if this is a sparse matrix (which have no 'shape')
+			try:
+				_ = x.shape[0]
+			except IndexError:				
+				x = x.item()
 			if X is None: 
 				X = x
 			else:
@@ -76,7 +81,7 @@ def main(train, test, run_id, features, hyperparameters=None, res_path=None):
 		X_test,  Y_test, labels  = get_features(test, features)	
 		#initialize model with the hyperparameters	
 		model = SGDClassifier(random_state=1234,**hyperparameters)
-		model_name = "+".join(features)
+		model_name = "+".join(features)	
 	model.fit(X_train,Y_train)
 	Y_hat = model.predict(X_test)
 	avgF1 = f1_score(Y_test, Y_hat,average="macro") 		
@@ -86,8 +91,8 @@ def main(train, test, run_id, features, hyperparameters=None, res_path=None):
 			"model":model_name, \
 			"dataset":os.path.basename(test), \
 			"run_id":run_id, \
-			"train_size":len(X_train), \
-			"test_size":len(X_test), \
+			"train_size":X_train.shape[0], \
+			"test_size":X_test.shape[0], \
 			"hyper":repr(hyperparameters)}
 	cols = ["dataset", "run_id", "acc", "avgF1","hyper"]
 	helpers.print_results(res, columns=cols)	

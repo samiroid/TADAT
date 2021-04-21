@@ -1,6 +1,12 @@
-# from tadat.pipeline import data_splitter
-# from tadat.pipeline import extractor
-# from tadat.pipeline import featurizer
-# from tadat.pipeline import linear_model
-# from tadat.pipeline import plots
+# # import data_splitter
+# # import extractor
+# # import featurizer
+# # import linear_model
+# # import plots
+
+# from . import data_splitter
+# from . import extractor
+# from . import featurizer
+# from . import linear_model
+# from . import plots
 

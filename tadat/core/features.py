@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from collections import Counter
-from scipy.sparse import lil_matrix
+from scipy.sparse import dok_matrix
 import pickle
 
 
@@ -21,7 +21,7 @@ def BOW(docs, vocab_size, sparse=True):
 	"""
 		Extract bag-of-word features
 	"""		
-	X = lil_matrix((len(docs), vocab_size))	
+	X = dok_matrix((len(docs), vocab_size))	
 	for i, doc in enumerate(docs):
 		try:
 			X[i, np.array(doc)] = 1
@@ -37,7 +37,7 @@ def BOW_freq(docs, vocab_size, sparse=True):
 	"""
 		Extract bag-of-word features
 	"""		
-	X = lil_matrix((len(docs), vocab_size))
+	X = dok_matrix((len(docs), vocab_size))
 	for i, doc in enumerate(docs):		
 		if len(doc) == 0: continue
 		ctr = Counter(doc)
